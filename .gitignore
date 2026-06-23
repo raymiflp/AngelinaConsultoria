@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production
+.env.production.local
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+
+# Database
+drizzle/meta/
+*.db
+*.sqlite
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker
+docker/data/
+docker-compose.override.yml
+
+# Sentry
+.sentryclirc
+
+# Misc
+*.tsbuildinfo
+next-env.d.ts
+
+# Orchestration metadata (not part of the shipped product)
+.atl/
+
+# Reports
+.unlighthouse-report/
+
+# Playwright tooling output (page snapshots, test cache)
+.playwright/
+.playwright-cli/

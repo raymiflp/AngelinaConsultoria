@@ -1,0 +1,1 @@
+ALTER TABLE "citas" ADD COLUMN "livekit_room_name" varchar(128);

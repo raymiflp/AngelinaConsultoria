@@ -1,0 +1,102 @@
+# =============================================================================
+# CI Pipeline — angelina-consultoria
+# =============================================================================
+# Se ejecuta en cada push o PR a main.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "22"
+  DATABASE_URL: postgres://angelina:angelina_pass@localhost:5432/angelina_consultoria_test
+  REDIS_URL: redis://localhost:6379
+  MEILISEARCH_HOST: http://localhost:7700
+  AUTH_SECRET: ci-secret
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run type-check
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npm run test:run -- --coverage
+
+  e2e-tests:
+    name: E2E Tests
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: angelina
+          POSTGRES_PASSWORD: angelina_pass
+          POSTGRES_DB: angelina_consultoria_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright tests
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm audit --audit-level=high
+        continue-on-error: true

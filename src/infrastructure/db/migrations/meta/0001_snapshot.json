@@ -1,0 +1,592 @@
+{
+  "id": "1ed75998-79ec-4b02-b9fb-9371bc204815",
+  "prevId": "8e658474-eca5-448d-8b49-a930f2ec1fb5",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.audit_logs": {
+      "name": "audit_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accion": {
+          "name": "accion",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entidad_afectada": {
+          "name": "entidad_afectada",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entidad_id": {
+          "name": "entidad_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detalles": {
+          "name": "detalles",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "direccion_ip": {
+          "name": "direccion_ip",
+          "type": "varchar(45)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "audit_logs_usuario_id_usuarios_id_fk": {
+          "name": "audit_logs_usuario_id_usuarios_id_fk",
+          "tableFrom": "audit_logs",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.citas": {
+      "name": "citas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "doctor_id": {
+          "name": "doctor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paciente_id": {
+          "name": "paciente_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_hora": {
+          "name": "fecha_hora",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDIENTE'"
+        },
+        "motivo": {
+          "name": "motivo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duracion_minutos": {
+          "name": "duracion_minutos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
+        },
+        "precio": {
+          "name": "precio",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notas": {
+          "name": "notas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "citas_doctor_id_doctores_id_fk": {
+          "name": "citas_doctor_id_doctores_id_fk",
+          "tableFrom": "citas",
+          "tableTo": "doctores",
+          "columnsFrom": [
+            "doctor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "citas_paciente_id_pacientes_id_fk": {
+          "name": "citas_paciente_id_pacientes_id_fk",
+          "tableFrom": "citas",
+          "tableTo": "pacientes",
+          "columnsFrom": [
+            "paciente_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.consentimientos": {
+      "name": "consentimientos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "aceptado": {
+          "name": "aceptado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_aceptacion": {
+          "name": "fecha_aceptacion",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_expiracion": {
+          "name": "fecha_expiracion",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "consentimientos_usuario_id_usuarios_id_fk": {
+          "name": "consentimientos_usuario_id_usuarios_id_fk",
+          "tableFrom": "consentimientos",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.doctor_disponibilidad": {
+      "name": "doctor_disponibilidad",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "doctor_id": {
+          "name": "doctor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "disponibilidad": {
+          "name": "disponibilidad",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "doctor_disponibilidad_doctor_id_doctores_id_fk": {
+          "name": "doctor_disponibilidad_doctor_id_doctores_id_fk",
+          "tableFrom": "doctor_disponibilidad",
+          "tableTo": "doctores",
+          "columnsFrom": [
+            "doctor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "doctor_disponibilidad_doctor_id_unique": {
+          "name": "doctor_disponibilidad_doctor_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "doctor_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.doctores": {
+      "name": "doctores",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero_colegiado": {
+          "name": "numero_colegiado",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "especialidad": {
+          "name": "especialidad",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "biografia": {
+          "name": "biografia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "precio_consulta": {
+          "name": "precio_consulta",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verificado": {
+          "name": "verificado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "calificacion_media": {
+          "name": "calificacion_media",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "doctores_usuario_id_usuarios_id_fk": {
+          "name": "doctores_usuario_id_usuarios_id_fk",
+          "tableFrom": "doctores",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "doctores_numero_colegiado_unique": {
+          "name": "doctores_numero_colegiado_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "numero_colegiado"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.pacientes": {
+      "name": "pacientes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_nacimiento": {
+          "name": "fecha_nacimiento",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direccion_calle": {
+          "name": "direccion_calle",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direccion_ciudad": {
+          "name": "direccion_ciudad",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direccion_provincia": {
+          "name": "direccion_provincia",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direccion_codigo_postal": {
+          "name": "direccion_codigo_postal",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direccion_pais": {
+          "name": "direccion_pais",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'España'"
+        },
+        "alergias": {
+          "name": "alergias",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "grupo_sanguineo": {
+          "name": "grupo_sanguineo",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notas_medicas": {
+          "name": "notas_medicas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "pacientes_usuario_id_usuarios_id_fk": {
+          "name": "pacientes_usuario_id_usuarios_id_fk",
+          "tableFrom": "pacientes",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.usuarios": {
+      "name": "usuarios",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rol": {
+          "name": "rol",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "telefono": {
+          "name": "telefono",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "usuarios_email_unique": {
+          "name": "usuarios_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

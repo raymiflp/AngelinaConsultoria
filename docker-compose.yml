@@ -1,0 +1,100 @@
+# =============================================================================
+# docker-compose.yml — angelina-consultoria (entorno de desarrollo completo)
+# =============================================================================
+# Uso: docker compose up -d
+# Servicios: PostgreSQL, Redis, MinIO, Meilisearch, LiveKit
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: angelina-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: angelina
+      POSTGRES_PASSWORD: angelina_pass
+      POSTGRES_DB: angelina_consultoria
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/dev/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U angelina -d angelina_consultoria"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: angelina-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: angelina-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: angelina_access
+      MINIO_ROOT_PASSWORD: angelina_secret
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.13
+    container_name: angelina-meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: dev-master-key
+      MEILI_ENV: development
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: angelina-livekit
+    restart: unless-stopped
+    ports:
+      - "7880:7880"   # HTTP signaling
+      - "7881:7881"   # WebRTC over TCP
+      - "7882:7882/udp"  # WebRTC over UDP
+    volumes:
+      - ./docker/dev/livekit.yaml:/etc/livekit.yaml:ro  # webhook config (livekit-webhooks, D11, AD-13)
+    extra_hosts:  # host.docker.internal cross-platform: Mac/Windows Docker Desktop resolves natively; Linux requires this mapping (livekit-webhooks, D11, R8, AD-14)
+      - "host.docker.internal:host-gateway"
+    command: --dev --bind 0.0.0.0 --config /etc/livekit.yaml
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7880/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  meilisearch_data:

@@ -1,0 +1,16 @@
+-- Migration 0005: make audit_logs.usuario_id nullable so system actors
+-- (e.g. the LiveKit server) can write audit rows from the room_finished
+-- webhook without attributing them to a human usuario (D9, AD-10).
+--
+-- The FK and onDelete: "cascade" stay — existing human-actor rows are
+-- unaffected; new system-actor rows use null.
+--
+-- DOWN migration (manual, NOT auto-generated per the project's forward-only
+-- pattern — see 0000_even_starhawk.sql / 0001_hot_komodo.sql / 0004_modality.sql):
+--
+--   ALTER TABLE "audit_logs" ALTER COLUMN "usuario_id" SET NOT NULL;
+--
+-- The down migration FAILS if any audit_logs row has usuario_id IS NULL
+-- (e.g. a LiveKit auto-completed cita's audit row). Before running it,
+-- delete or attribute those rows manually.
+ALTER TABLE "audit_logs" ALTER COLUMN "usuario_id" DROP NOT NULL;

@@ -1,0 +1,40 @@
+# LiveKit self-hosted dev config (mounted into the `livekit` container).
+#
+# Enables the `room_finished` webhook delivery to the Next.js dev server
+# (D11 / REQ-LI-WH-1). The handler at `POST /api/livekit/webhook` is the
+# trust boundary — see docs/livekit.md "Webhooks" section for the full
+# pipeline.
+#
+# Notes on the exact shape:
+#   - `bind_addresses: [""]` is the YAML equivalent of `--bind 0.0.0.0`.
+#   - `webhook.api_key: devkey` MUST match LIVEKIT_API_KEY=devkey in
+#     .env.local.example (LiveKit uses the same key for signing webhooks
+#     AND validating incoming JWTs; a mismatch = 401 on every webhook).
+#   - `keys.devkey: c2VjcmV0` is the base64-encoded form of the literal
+#     `secret` (the dev API secret per docs/livekit.md). The `devkey: <secret>`
+#     shorthand works under `--dev` WITHOUT `--config`; once `--config` is
+#     added (as it is below), the base64 form is required by LiveKit's
+#     config schema.
+#   - `${LIVEKIT_WEBHOOK_URL:-<default>}` is Docker Compose env-var
+#     indirection: if LIVEKIT_WEBHOOK_URL is set, it overrides the default;
+#     if unset, the default fires. This lets the same YAML work for
+#     staging/prod with different URLs (no re-mount).
+#   - `host.docker.internal` works out of the box on Mac/Windows Docker
+#     Desktop. On Linux, docker-compose.yml's `extra_hosts` maps it to
+#     `host-gateway`. The default URL below is correct for Mac/Windows +
+#     Linux parity (see docker-compose.yml).
+
+port: 7880
+bind_addresses:
+  - ""
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+turn:
+  enabled: false
+webhook:
+  api_key: devkey
+  urls:
+    - ${LIVEKIT_WEBHOOK_URL:-http://host.docker.internal:3000/api/livekit/webhook}
+keys:
+  devkey: c2VjcmV0

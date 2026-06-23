@@ -1,0 +1,52 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Next.js 15 + React 19 + TypeScript 5.9 + Tailwind v4 + tRPC + Drizzle ORM
+  Architecture: Clean Architecture (domain → application → infrastructure → presentation)
+  Testing: Vitest (unit), Playwright (E2E)
+  Databases: PostgreSQL, Redis, Meilisearch, MinIO
+  Style: Prettier + ESLint (next/core-web-vitals)
+  Convention: OpenSpec file-based artifact store, auto execution mode
+  Delivery: auto-forecast PR strategy, 800-line review budget
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+testing:
+  strict_tdd: false
+  test_runner: vitest
+  test_layers:
+    unit: true
+    integration: false
+    e2e: false
+  coverage: true
+  linter: eslint
+  type_checker: typescript
+  formatter: prettier
+
+persistence:
+  mode: openspec
+  execution: auto
+  delivery_strategy: auto-forecast
+  review_budget_lines: 800

@@ -1,0 +1,30 @@
+{
+  "name": "angelina-consultoria",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [3000, 5432, 6379, 7700, 9000, 9001],
+  "postCreateCommand": "npm ci && npx playwright install --with-deps chromium",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "exodiusstudios.comment-anchors",
+        "github.vscode-github-actions",
+        "ms-playwright.playwright",
+        "seatonjiang.gitmoji-vscode"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "typescript.preferences.importModuleSpecifier": "non-relative",
+        "tailwindCSS.experimental.configFile": null,
+        "tailwindCSS.classAttributes": ["class", "className", "ngClass", ".*ClassName.*"]
+      }
+    }
+  }
+}
