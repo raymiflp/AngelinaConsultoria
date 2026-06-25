@@ -32,8 +32,8 @@ describe("Shell", () => {
       </Shell>,
     );
 
-    // Sidebar renders the "MC" branding logo
-    expect(screen.getByText("MC")).toBeInTheDocument();
+    // Sidebar renders the "AC" branding logo
+    expect(screen.getByText("AC")).toBeInTheDocument();
   });
 
   it("renders the header with theme toggle and user menu", () => {

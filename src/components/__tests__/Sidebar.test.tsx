@@ -25,7 +25,7 @@ describe("Sidebar (admin role)", () => {
     render(<Sidebar userRole="ADMIN" />);
 
     // Branding
-    expect(screen.getByText("MC")).toBeInTheDocument();
+    expect(screen.getByText("AC")).toBeInTheDocument();
 
     // Items visible to ADMIN
     expectNavItem("Dashboard");
@@ -66,7 +66,7 @@ describe("Sidebar (doctor role)", () => {
     render(<Sidebar userRole="DOCTOR" />);
 
     // Branding still visible
-    expect(screen.getByText("MC")).toBeInTheDocument();
+    expect(screen.getByText("AC")).toBeInTheDocument();
 
     // Dashboard is visible to all roles (no roleRequired)
     expectNavItem("Dashboard");

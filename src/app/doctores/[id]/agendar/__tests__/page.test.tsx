@@ -13,6 +13,39 @@ import userEvent from "@testing-library/user-event";
 
 // ─── Mocks (hoisted before the page import) ───────────────────────────
 
+/**
+ * Dynamic test date — tomorrow at 10:00 local time. Computed once at
+ * module load instead of hardcoded so the test stays valid as time
+ * passes (the original hardcoded `2026-06-22T00:00:00` made this a
+ * time-bomb that broke a few days after the modality-toggle change was
+ * archived).
+ *
+ * `vi.hoisted` guarantees these constants are initialized before any
+ * vi.mock factory runs (the calendar mock factory references them).
+ */
+const { tomorrowMidnight, tomorrowStartIso, tomorrowEndIso, ALL_DAYS_ES } = vi.hoisted(() => {
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(10, 0, 0, 0);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const midnight = new Date(start);
+  midnight.setHours(0, 0, 0, 0);
+  return {
+    tomorrowMidnight: midnight,
+    tomorrowStartIso: start.toISOString(),
+    tomorrowEndIso: end.toISOString(),
+    ALL_DAYS_ES: [
+      "domingo",
+      "lunes",
+      "martes",
+      "miércoles",
+      "jueves",
+      "viernes",
+      "sábado",
+    ],
+  };
+});
+
 const mockUseQuery = vi.hoisted(() => vi.fn());
 const mockUseMutation = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
@@ -90,7 +123,7 @@ vi.mock("@/components/ui/calendar", () => ({
     <button
       type="button"
       data-testid="calendar-pick-date"
-      onClick={() => onSelect(new Date("2026-06-22T00:00:00"))}
+      onClick={() => onSelect(tomorrowMidnight)}
     >
       pick test date
     </button>
@@ -143,7 +176,7 @@ function mockQueries(opts: {
     }
     if (procedureKey === "getDoctorAvailability") {
       return {
-        data: opts.availability?.data ?? { availableDays: ["lunes"] },
+        data: opts.availability?.data ?? { availableDays: [...ALL_DAYS_ES] },
         isLoading: false,
         isError: false,
         error: null,
@@ -221,8 +254,8 @@ describe("AgendarPage — modality picker (modality-toggle, PR-B)", () => {
       slots: {
         data: [
           {
-            start: "2026-06-22T10:00:00.000Z",
-            end: "2026-06-22T10:30:00.000Z",
+            start: tomorrowStartIso,
+            end: tomorrowEndIso,
             available: true,
           },
         ],
@@ -267,8 +300,8 @@ describe("AgendarPage — modality picker (modality-toggle, PR-B)", () => {
       slots: {
         data: [
           {
-            start: "2026-06-22T10:00:00.000Z",
-            end: "2026-06-22T10:30:00.000Z",
+            start: tomorrowStartIso,
+            end: tomorrowEndIso,
             available: true,
           },
         ],
