@@ -2,6 +2,14 @@
 # CI Pipeline — angelina-consultoria
 # =============================================================================
 # Se ejecuta en cada push o PR a main.
+#
+# Required GitHub Actions secrets (for the e2e-tests job):
+#   - LIVEKIT_TEST_API_KEY     : LiveKit Cloud test project API key
+#   - LIVEKIT_TEST_API_SECRET  : LiveKit Cloud test project API secret (base64)
+#   - LIVEKIT_TEST_URL         : LiveKit Cloud test project WSS URL (wss://...)
+# Without these, the e2e-tests job fails with "LiveKit env vars missing"
+# (loud, documented failure mode). Local dev runs `pnpm test:e2e` without
+# the LIVEKIT_E2E gate and the videocall test is skipped.
 
 name: CI
 
@@ -51,9 +59,13 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     env:
-      LIVEKIT_API_KEY: devkey
-      LIVEKIT_API_SECRET: secret
-      NEXT_PUBLIC_LIVEKIT_URL: ws://localhost:7880
+      # pre-deploy-verification: run the videocall test (was previously
+      # skipped). LIVEKIT_TEST_* secrets come from a LiveKit Cloud free
+      # test project (provisioned by the operator).
+      LIVEKIT_E2E: "1"
+      LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_TEST_API_KEY }}
+      LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_TEST_API_SECRET }}
+      NEXT_PUBLIC_LIVEKIT_URL: ${{ secrets.LIVEKIT_TEST_URL }}
     services:
       postgres:
         image: postgres:16-alpine

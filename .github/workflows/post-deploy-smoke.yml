@@ -1,0 +1,133 @@
+# =============================================================================
+# Post-Deploy Smoke — angelina-consultoria
+# =============================================================================
+# Verifies that a successful Vercel deploy actually responds correctly.
+# Triggers after `Deploy` workflow completes successfully. Hits three routes:
+# /, /login, /api/health. A green smoke is the operator's signal that the
+# deploy is healthy.
+
+name: Post-Deploy Smoke
+
+on:
+  workflow_run:
+    workflows: ["Deploy"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  smoke:
+    # Only run if Deploy succeeded
+    if: github.event.workflow_run.conclusion == 'success'
+    name: Smoke test deployed app
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Extract deployment URL from Deploy workflow output
+        id: url
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          # Pull the Deploy workflow's run output and grep for the
+          # Vercel deployment URL (printed by `vercel deploy --prebuilt`).
+          url=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" \
+            --jq '.jobs[].steps[]?.outputs[]? // empty' 2>/dev/null \
+            | grep -Eo 'https://[a-z0-9-]+\.vercel\.app' \
+            | head -n 1)
+
+          if [ -z "$url" ]; then
+            echo "::error::Could not extract Vercel deployment URL from Deploy workflow run $RUN_ID. Inspect the Deploy run output and verify 'vercel deploy --prebuilt --prod' printed a https://*.vercel.app URL."
+            exit 1
+          fi
+
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "✅ Extracted deployment URL: $url"
+
+      - name: Wait for Vercel cold start (10s)
+        run: sleep 10
+
+      - name: Smoke: GET /
+        id: root
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          out="smoke-output-root.txt"
+          for i in 1 2 3 4 5 6; do
+            status=$(curl -sS -o "$out" -w "%{http_code}" --max-time 15 "$URL/" || echo "000")
+            echo "Attempt $i: HTTP $status" | tee -a "$out"
+            if [ "$status" = "200" ]; then
+              echo "✅ GET / → 200"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::GET / failed after 6 attempts. Last status: $status"
+          cat "$out"
+          exit 1
+
+      - name: Smoke: GET /login
+        id: login
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          out="smoke-output-login.txt"
+          for i in 1 2 3 4 5 6; do
+            status=$(curl -sS -o "$out" -w "%{http_code}" --max-time 15 "$URL/login" || echo "000")
+            echo "Attempt $i: HTTP $status" | tee -a "$out"
+            if [ "$status" = "200" ]; then
+              echo "✅ GET /login → 200"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::GET /login failed after 6 attempts. Last status: $status"
+          cat "$out"
+          exit 1
+
+      - name: Smoke: GET /api/health
+        id: health
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          out="smoke-output-health.txt"
+          for i in 1 2 3 4 5 6; do
+            body=$(curl -sS -w "\nHTTP_CODE:%{http_code}" --max-time 15 "$URL/api/health" 2>&1)
+            status=$(echo "$body" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+            json=$(echo "$body" | grep -v HTTP_CODE)
+            echo "Attempt $i: HTTP $status" | tee -a "$out"
+            echo "Body: $json" | tee -a "$out"
+            if [ "$status" = "200" ] && echo "$json" | grep -q '"status":"ok"'; then
+              echo "✅ GET /api/health → 200 + status:ok"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::GET /api/health failed after 6 attempts. Last status: $status"
+          cat "$out"
+          exit 1
+
+      - name: Upload smoke artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-deploy-smoke-output
+          path: |
+            smoke-output-root.txt
+            smoke-output-login.txt
+            smoke-output-health.txt
+          retention-days: 7
+
+      - name: Write summary
+        if: ${{ success() }}
+        run: |
+          echo "## ✅ Post-deploy smoke passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deployment URL: \`${{ steps.url.outputs.url }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- GET / → 200" >> "$GITHUB_STEP_SUMMARY"
+          echo "- GET /login → 200" >> "$GITHUB_STEP_SUMMARY"
+          echo "- GET /api/health → 200 + status:ok" >> "$GITHUB_STEP_SUMMARY"

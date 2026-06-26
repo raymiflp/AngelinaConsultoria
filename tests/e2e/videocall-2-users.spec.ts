@@ -3,9 +3,10 @@
  * E2E test: two authenticated users join the same cita's video call.
  *
  * Skipped unless `LIVEKIT_E2E=1` is set. The test is opt-in because it
- * needs a real LiveKit container, the dev stack running, and
- * `pnpm seed:dev` to have been executed at least once. CI without
- * LiveKit reports this test as `skipped`, NOT `failed`.
+ * needs a real LiveKit Cloud test project (wss:// URL), the dev stack
+ * running, and `pnpm seed:dev` to have been executed at least once.
+ * CI without LiveKit Cloud secrets reports this test as `skipped`,
+ * NOT `failed`.
  *
  * REQ-VC-E2E-1 .. REQ-VC-E2E-5 (e2e-video-call spec).
  */
@@ -14,7 +15,7 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import postgres from "postgres";
 
 const SKIP_REASON =
-  "Set LIVEKIT_E2E=1 to run (requires LiveKit container + pnpm seed:dev).";
+  "Set LIVEKIT_E2E=1 to run (requires LiveKit Cloud test project + pnpm seed:dev).";
 
 const DOCTOR = {
   email: "doctor.dev@angelina.local",
@@ -37,6 +38,20 @@ test.describe("videocall — two authenticated users on the same cita", () => {
   let citaId: string;
 
   test.beforeAll(async () => {
+    // ADR-0001 + migrate-managed-services: LiveKit is Cloud, not self-hosted.
+    // Reject any stale `ws://` URL (e.g., `ws://localhost:7880`) at the top
+    // of the test rather than letting it crash the eager livekitServerClient
+    // init deep inside the call page. This is a regression guard against
+    // the footgun that change #3 closed.
+    const lkUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? "";
+    if (!lkUrl.startsWith("wss://")) {
+      throw new Error(
+        `NEXT_PUBLIC_LIVEKIT_URL must start with "wss://" (LiveKit Cloud). ` +
+          `Got: "${lkUrl}". Provision a LiveKit Cloud test project and set ` +
+          `LIVEKIT_TEST_URL in GitHub Actions secrets.`,
+      );
+    }
+
     if (!process.env.DATABASE_URL) {
       throw new Error(
         "DATABASE_URL is required to look up the seeded citaId (run pnpm seed:dev first).",

@@ -58,16 +58,40 @@ Both jobs target the `production` GitHub Environment, which gives you a manual a
 
 ## Verify Deploy
 
-After the workflow succeeds, verify the deploy in two ways:
+The `post-deploy-smoke` GitHub Actions workflow (`.github/workflows/post-deploy-smoke.yml`) runs automatically after `Deploy` succeeds. It curls three routes against the Vercel deployment URL with a 60-second retry loop (6 attempts × 10s backoff):
+
+| Route | Expected | What it verifies |
+|-------|----------|------------------|
+| `GET /` | HTTP 200 | The Next.js app renders |
+| `GET /login` | HTTP 200 | The login page renders (auth UI is reachable) |
+| `GET /api/health` | HTTP 200 + `{"status":"ok"}` | DB connectivity via Vercel Postgres pooler is working |
+
+A green smoke is the operator's success signal — the deploy is healthy. A red smoke means a misconfiguration (env var scope, missing `AUTH_TRUST_HOST`, wrong DATABASE_URL pool annotation, etc.) and should be investigated before considering the deploy complete.
+
+Smoke failures upload `smoke-output-{root,login,health}.txt` as workflow artifacts for debugging.
+
+### Manual spot-checks (optional, after a green smoke)
 
 ```bash
-# 1. Security headers present at the edge (vercel.json applied)
+# Security headers present at the edge (vercel.json applied)
 curl -fsSI https://<your-domain>/ | grep -iE 'strict-transport-security|x-frame-options|permissions-policy'
 
 # Expected: three header lines, one per grep match.
 ```
 
 Then load the app in a browser, open DevTools → Network, navigate to a cita call page, and confirm the WebSocket connection URL starts with `wss://` (not `ws://`).
+
+### Required CI secrets
+
+The CI workflow's e2e job (which now runs the videocall test by default — was previously skipped) requires these GitHub Actions secrets, set in **Settings → Secrets and variables → Actions**:
+
+| Secret | Purpose |
+|--------|---------|
+| `LIVEKIT_TEST_API_KEY` | LiveKit Cloud free test project API key |
+| `LIVEKIT_TEST_API_SECRET` | LiveKit Cloud free test project API secret (base64) |
+| `LIVEKIT_TEST_URL` | LiveKit Cloud free test project WSS URL (`wss://<project>.livekit.cloud`) |
+
+Provision the LiveKit Cloud test project at https://livekit.cloud (free tier, no credit card). Without these secrets, the e2e-tests job fails with "LiveKit env vars missing" — this is the loud, documented failure mode (ADR-0001 + `pre-deploy-verification`).
 
 ## Rollback
 
