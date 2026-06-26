@@ -137,6 +137,74 @@ After the second green smoke (with the real URLs), the platform is live. From th
 - Every push runs the full CI + Deploy + Smoke chain.
 - To roll back a bad deploy: `vercel rollback --token=$VERCEL_TOKEN` (or click **Promote to Production** on a previous deployment in the Vercel dashboard).
 
+## Automated CLI Setup (PowerShell)
+
+For operators on Windows / PowerShell 5.1+, two scripts automate the parts that don't require external account credentials:
+
+### `scripts/setup-vercel.ps1` — full first-time deploy via Vercel CLI
+
+Run after `vercel login` in a separate terminal.
+
+```powershell
+# First-time deploy with placeholders (build passes, smoke fails at
+# /api/health because DB is placeholder — expected):
+.\scripts\setup-vercel.ps1
+
+# After provisioning Vercel Postgres, LiveKit Cloud, Upstash — set the
+# real env vars in your PowerShell session and re-run with -Redeploy:
+$env:DATABASE_URL              = "postgres://...?pgbouncer=true&connection_limit=1"
+$env:LIVEKIT_API_KEY           = "APIxxxxxxxxxxxx"
+$env:LIVEKIT_API_SECRET        = "<base64-from-cloud-dashboard>"
+$env:NEXT_PUBLIC_LIVEKIT_URL   = "wss://your-project.livekit.cloud"
+$env:LIVEKIT_WEBHOOK_URL       = "https://<your-domain>/api/livekit/webhook"
+$env:APP_URL                   = "https://<your-domain>"
+$env:UPSTASH_REDIS_REST_URL    = "https://your-db.upstash.io"
+$env:UPSTASH_REDIS_REST_TOKEN = "<token-from-upstash-console>"
+$env:AUTH_SECRET               = "<output of: openssl rand -base64 32>"
+.\scripts\setup-vercel.ps1 -Redeploy
+```
+
+What the script does (matches Steps 1–6 above):
+
+1. Pre-flight: verifies `vercel` CLI is installed and the user is logged in.
+2. Creates the Vercel project if it doesn't exist (idempotent).
+3. Links the local repo to the project.
+4. Sets 11 Production env vars from PowerShell env vars (or placeholders).
+5. Disables SSO protection (so curl + external smoke can access the URL).
+6. Deploys to production.
+7. Prints the deployment URL + next-step checklist.
+
+### `scripts/smoke-test.ps1` — run the post-deploy smoke against any URL
+
+The same three checks the GitHub `post-deploy-smoke` workflow runs, callable locally for manual verification after a CLI deploy:
+
+```powershell
+# Default: 6 attempts × 10s backoff (60s total)
+.\scripts\smoke-test.ps1 -Url https://medico-consulta.vercel.app
+
+# Faster retry for local testing
+.\scripts\smoke-test.ps1 -Url https://medico-consulta.vercel.app -Retries 2 -BackoffSec 3
+```
+
+Output:
+
+```
+==> GET /
+  ✅ /
+==> GET /login
+  ✅ /login
+==> GET /api/health
+  ✅ /api/health       (body matches {"status":"ok"})
+==> Summary
+  ✅ All 3 checks passed
+```
+
+If `/api/health` returns 503, the body shows the failure cause (e.g., `database: disconnected`) and the script exits 1 — useful in CI scripts.
+
+### Why these scripts exist
+
+The `docs/deployment.md` "First-Time Setup" section is for click-by-click manual setup via the Vercel dashboard. These scripts are for operators who prefer terminal workflows or want reproducible setup in CI. Both paths converge on the same end state (Production deployment with 11 env vars set and smoke green).
+
 ## Required Secrets
 
 The deploy fails fast if any of these are missing. Set them before the first push to `main`.
