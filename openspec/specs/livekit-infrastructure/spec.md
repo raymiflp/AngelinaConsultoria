@@ -2,7 +2,13 @@
 
 ## Purpose
 
-Define the runtime surface for the self-hosted LiveKit SFU that powers the video calls. The platform runs LiveKit in Docker (not LiveKit Cloud) to keep consultation traffic in-house. This spec covers the Docker service definition, the environment variables, the dev-mode API key/secret pair, the no-TLS exemption for `localhost`, the boot-time validation of env vars, and the dev documentation. It does NOT cover the call page UI (see `video-calls-ui`) or the procedure (see `video-calls-api`).
+Define the runtime surface for the LiveKit SFU that powers the video calls. ADR-0001 (Vercel-Only Deployment, 2026-06-25) migrated the SFU from a self-hosted Docker container to **LiveKit Cloud** (https://livekit.cloud). The self-hosted Docker-based requirements below are preserved as historical record for the `2026-06-12` through `2026-06-23` window; they have been superseded by `REQ-LI-CLOUD-1` (added 2026-06-25 by the `migrate-managed-services` change).
+
+Active requirements:
+- `REQ-LI-INIT-1` — LiveKitServerClient is instantiated eagerly at module load (UNCHANGED, preserved from the 2026-06-23 change)
+- `REQ-LI-CLOUD-1` — LiveKit Cloud is the SFU (NEW, added 2026-06-25)
+
+This spec does NOT cover the call page UI (see `video-calls-ui`) or the procedure (see `video-calls-api`).
 
 ## Requirements
 
@@ -531,4 +537,37 @@ The Vitest unit-test runner (`pnpm test:run`) is unaffected by this change becau
 - THEN the error message MUST appear in the terminal within 2 seconds of `next dev` starting
 - AND no browser navigation, no `getRoomToken` call, and no user action is required to trigger the error
 - AND the operator can `Ctrl+C` immediately and fix `.env.local` without waiting for a request to fail
+
+## LiveKit Cloud Migration (2026-06-25)
+
+The following requirement is ADDED to this spec by the `migrate-managed-services` change (archived 2026-06-25). It supersedes the self-hosted-Docker requirements above. See ADR-0001 for the architectural rationale.
+
+### Requirement: REQ-LI-CLOUD-1 — LiveKit Cloud is the SFU
+
+The system's video-call SFU MUST be LiveKit Cloud (https://livekit.cloud), not a self-hosted container. The `livekit-server-sdk` package MUST continue to be used (no SDK swap). The env vars `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `NEXT_PUBLIC_LIVEKIT_URL`, and `LIVEKIT_WEBHOOK_URL` MUST be set to the LiveKit Cloud project's values.
+
+`NEXT_PUBLIC_LIVEKIT_URL` MUST be `wss://<project-subdomain>.livekit.cloud` (TLS required, `ws://` is rejected by LiveKit Cloud). The env var MUST be scoped to "Build Command" or "Both" in Vercel's Environment Variables page.
+
+`LIVEKIT_WEBHOOK_URL` MUST be the public URL of the deployed Next.js app's `/api/livekit/webhook` endpoint. The webhook is configured in the LiveKit Cloud project's dashboard, NOT in a repo file.
+
+#### Scenario: livekit-server-sdk is the integration SDK
+
+- GIVEN `package.json`
+- WHEN the dependencies are read
+- THEN `"livekit-server-sdk"` MUST appear with a version pinned to `2.15.x` or higher
+- AND no `livekit` self-hosted server package (e.g., `livekit-server`) MUST appear
+
+#### Scenario: NEXT_PUBLIC_LIVEKIT_URL is wss:// on Vercel
+
+- GIVEN the Vercel production environment variables
+- WHEN `NEXT_PUBLIC_LIVEKIT_URL` is read
+- THEN it MUST start with `wss://`
+- AND the host MUST end with `.livekit.cloud` (or a custom domain if the operator configured one)
+
+#### Scenario: Webhook URL points at the Vercel deployment
+
+- GIVEN the LiveKit Cloud project's webhook config
+- WHEN the webhook URL is inspected
+- THEN it MUST be the public Vercel app URL + `/api/livekit/webhook`
+- AND the path MUST match the route handler at `src/app/api/livekit/webhook/route.ts`
 

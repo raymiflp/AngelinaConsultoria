@@ -30,13 +30,22 @@ automáticamente del backend. Zero código duplicado de tipos.
 Drizzle es más ligero, SQL-first, y funciona mejor en entornos serverless.
 Migraciones explícitas sin generación de cliente pesada.
 
-### LiveKit para videoconsulta
-Open-source, WebRTC nativo, con grabación y transcripts compliant.
-Se despliega en VPS propio para mantener datos en UE.
+### LiveKit Cloud para videoconsulta
+Open-source WebRTC nativo, con grabación y transcripts compliant.
+Gestionado via LiveKit Cloud (free tier). ADR-0001 documenta el cambio
+desde self-host a Cloud.
 
 ### PostHog self-hosted
 Analytics sin enviar datos de salud a terceros. Cumplimiento RGPD.
 Alternativa a Google Analytics que evita transferencias a EEUU.
+
+### ADR-0001: Vercel-Only Deployment
+La plataforma se despliega exclusivamente en Vercel + servicios
+gestionados (Vercel Postgres, Upstash REST, LiveKit Cloud, Vercel Blob).
+La decisión arquitectónica está documentada en
+[`docs/architecture/decisions/0001-vercel-only.md`](./docs/architecture/decisions/0001-vercel-only.md).
+Cualquier propuesta que contradiga el ADR debe llamar explícitamente
+el override.
 
 ### Meilisearch para búsqueda
 Búsqueda con typo tolerance, filtros geo, por especialidad y aseguradora.

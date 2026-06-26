@@ -38,15 +38,18 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Server configuration for WebSocket (LiveKit, Socket.io)
-  serverExternalPackages: ["socket.io", "livekit-server-sdk"],
+  // Server configuration for WebSocket (LiveKit Cloud via livekit-server-sdk)
+  serverExternalPackages: ["livekit-server-sdk"],
 
   // Image optimization (patient documents, doctor profiles)
+  // ADR-0001: hostname defaults to Vercel Blob public hostname pattern.
+  // Override via MINIO_PUBLIC_HOSTNAME env var if needed.
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: process.env.MINIO_PUBLIC_HOSTNAME ?? "minio.local",
+        hostname:
+          process.env.MINIO_PUBLIC_HOSTNAME ?? "*.public.blob.vercel-storage.com",
         port: "",
         pathname: "/**",
       },

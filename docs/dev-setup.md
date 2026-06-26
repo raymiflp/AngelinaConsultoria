@@ -8,6 +8,16 @@ joined in a video call" in under 10 minutes. Versions are anchored to
 `package.json` and `docker-compose.yml`; do not hardcode versions here
 — they will drift.
 
+## Why this stack
+
+The local dev stack mirrors the production stack as closely as possible
+(ADR-0001: Vercel-Only Deployment). What runs in Docker locally is what
+Vercel runs in production (Postgres). What runs as a managed service
+locally (LiveKit Cloud free project, Upstash REST free DB) is the same
+managed service in production. See
+[`docs/architecture/decisions/0001-vercel-only.md`](../architecture/decisions/0001-vercel-only.md)
+for the rationale.
+
 ## 1. Prerequisites
 
 - **Node.js 22+** (`node --version` should print `v22.x` or higher).
@@ -15,6 +25,9 @@ joined in a video call" in under 10 minutes. Versions are anchored to
   for the version pinned in `packageManager`).
 - **Docker Desktop** (Mac/Windows) or **Docker Engine + Compose v2**
   (Linux). `docker compose version` should print a `v2.x` line.
+- **LiveKit Cloud free dev project** at https://livekit.cloud (no credit
+  card required). You will paste its API key/secret/URL into
+  `.env.local` in step 3.
 
 ## 2. Install
 
@@ -28,39 +41,40 @@ pnpm install
 cp .env.example .env.local
 ```
 
-Then edit `.env.local` and set the LiveKit block (the dev defaults
-match the `--dev` mode of `livekit-server`):
+Then edit `.env.local` and set the LiveKit Cloud block (paste values
+from your LiveKit Cloud dev project dashboard):
 
 ```bash
-LIVEKIT_API_KEY=devkey
-LIVEKIT_API_SECRET=secret
-NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
+LIVEKIT_API_KEY=APIxxxxxxxxxxxx
+LIVEKIT_API_SECRET=<base64-from-dashboard>
+NEXT_PUBLIC_LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_WEBHOOK_URL=http://host.docker.internal:3000/api/livekit/webhook
 ```
 
-Plus the standard `DATABASE_URL`, `REDIS_URL`, `MINIO_*`, `MEILI_*`
-copied from `.env.example`. The `LiveKitServerClient` is instantiated
-eagerly at boot (REQ-LI-INIT-1) so a missing LiveKit var fails
-`next dev` immediately, not at the first request.
+Plus the standard `DATABASE_URL` (the example points at local Postgres)
+and the `UPSTASH_*` env vars (the example points at a free Upstash dev
+DB; create one at https://upstash.com if you want rate-limiting and
+caching to actually run in dev — without them, both degrade to no-op).
+
+The `LiveKitServerClient` is instantiated eagerly at boot
+(`REQ-LI-INIT-1`) so a missing LiveKit var fails `next dev` immediately,
+not at the first request.
 
 ## 4. DB services
 
 ```bash
-docker compose up -d postgres redis minio meilisearch livekit
+docker compose up -d postgres redis
 ```
 
-All five services should report `healthy` (or `running`) within ~30s.
-One verification command per service:
+Two services should report `healthy` within ~30s. One verification
+command per service:
 
 - `postgres` (port 5432) — `docker compose ps postgres` shows `healthy`.
 - `redis` (port 6379) — `docker compose ps redis` shows `healthy`.
-- `minio` (ports 9000, 9001) —
-  `curl -fsS http://localhost:9000/minio/health/live` returns 200.
-- `meilisearch` (port 7700) —
-  `curl -fsS http://localhost:7700/health` returns
-  `{"status":"available"}`.
-- `livekit` (port 7880) — `curl -fsS http://localhost:7880` returns a
-  LiveKit server identification string.
+
+LiveKit, MinIO, and MeiliSearch are no longer in `docker-compose.yml`
+(see ADR-0001): LiveKit is now a Cloud service, MinIO is now Vercel
+Blob, MeiliSearch was unused and has been removed.
 
 ## 5. Migrations
 
@@ -69,7 +83,7 @@ pnpm db:migrate
 ```
 
 Applies the Drizzle migrations in `src/infrastructure/db/migrations/`
-in order. The first time, this creates all 11 tables (`usuarios`,
+in order. The first time, this creates all tables (`usuarios`,
 `doctores`, `pacientes`, `citas`, `audit_logs`, `consentimientos`,
 `doctor_disponibilidad`, `doctor_experiencia`, `doctor_servicios`,
 `doctor_condiciones`, and the auth/session tables).
@@ -137,14 +151,16 @@ window so the two sessions have isolated cookies:
    (Chrome shows a small bar at the top of the page; click Allow).
 5. **Both tabs**: confirm TWO video tiles are visible in each tab —
    one local + one remote. The remote tile in each tab shows the
-   other participant's face.
+   other participant's face. The connection runs over `wss://` to your
+   LiveKit Cloud project (NOT `ws://localhost:7880` — that was the
+   self-hosted LiveKit story, retired by ADR-0001).
 6. **Both tabs**: click "Leave" (or close the tab) in BOTH tabs.
 7. **Tab 1**: refresh `http://localhost:3000/citas/<uuid>`. The cita
    status badge should now read `COMPLETADA` (the LiveKit
    `room_finished` webhook transitioned the cita automatically). If
    after 30 seconds the badge still reads `EN_CURSO`, see the
-   troubleshooting matrix below — likely the LiveKit container
-   cannot reach `host.docker.internal:3000`.
+   troubleshooting matrix below — likely the LiveKit Cloud webhook is
+   not configured to reach your local URL.
 
 **Pass criteria**: both tabs see each other's video; status badge
 reads `COMPLETADA` within 30 seconds of the second tab leaving.
@@ -153,9 +169,8 @@ reads `COMPLETADA` within 30 seconds of the second tab leaving.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `pnpm dev` exits with `"LiveKit env vars missing"` | `.env.local` is missing `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | `cp .env.example .env.local` and verify the two vars are `devkey` / `secret` |
-| `docker compose ps livekit` shows the container as `Exit 1` or not running | LiveKit image pulled with a stale config, or port 7880 occupied | `docker compose logs livekit` for the actual error; `docker compose down && docker compose up -d livekit` |
+| `pnpm dev` exits with `"LiveKit env vars missing"` | `.env.local` is missing `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | `cp .env.example .env.local` and paste your LiveKit Cloud project values |
 | `getRoomToken` returns `FORBIDDEN` with `"La cita debe estar confirmada antes…"` | Cita status is `PENDIENTE`, not `CONFIRMADA` (seed defaulted, or operator manually edited) | Re-run `pnpm seed:dev`; the script forces `estado = 'CONFIRMADA'`. Verify with `pnpm db:studio` |
 | `getRoomToken` returns `FORBIDDEN` with `"La videollamada se habilita 15 minutos antes…"` | Operator opened the URL outside the cita's ±15 minute window | Use the URL printed by `pnpm seed:dev` (which schedules for `now + 5min`); re-run the seed if more than 15 minutes have passed since the original run |
-| Smoke test step 5: only one video tile per tab | LiveKit container cannot reach the browser (WebRTC failed) | `docker compose logs livekit` for the join error; on a real browser, allow camera/mic when prompted |
-| Smoke test step 7: badge still reads `EN_CURSO` after 30s | LiveKit webhook cannot reach `host.docker.internal:3000/api/livekit/webhook` | Verify `docker-compose.yml` has `extra_hosts: host.docker.internal:host-gateway` (Linux); Mac/Windows Docker Desktop resolves the hostname natively |
+| Smoke test step 5: only one video tile per tab | LiveKit Cloud project cannot reach the browser (WebRTC failed) — check the Cloud dashboard's connection logs | Allow camera/mic when prompted; verify the Cloud project's region is close to your location |
+| Smoke test step 7: badge still reads `EN_CURSO` after 30s | LiveKit Cloud webhook is not configured to reach your local URL | In the LiveKit Cloud dashboard, set the webhook URL to `http://host.docker.internal:3000/api/livekit/webhook` (Mac/Windows Docker Desktop resolves this natively; on Linux use `host-gateway`) or use a tunnel (ngrok/cloudflared) |

@@ -1,34 +1,27 @@
 /**
- * Redis client singleton.
+ * Redis client singleton (Upstash REST).
  *
- * Only initializes when REDIS_URL is set (production/preview).
- * In development/CI without Redis, all operations are no-ops.
+ * ADR-0001 (Vercel-Only): replaces the previous ioredis TCP client with
+ * @upstash/redis REST. The REST API is zero-connection (no TCP handshake
+ * on cold start) and survives Vercel Function recycling without orphaned
+ * sockets.
+ *
+ * Only initializes when UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
+ * are set. When unset (local dev without Upstash, CI without secrets), all
+ * operations are no-ops — the cache + rate-limiter modules degrade
+ * gracefully (see cache.ts, rate-limiter.ts).
  */
-import Redis from "ioredis";
+import { Redis } from "@upstash/redis";
 
 const globalForRedis = globalThis as unknown as {
   redis: Redis | undefined;
 };
 
-const REDIS_URL = process.env.REDIS_URL;
-
 function createRedis(): Redis | null {
-  if (!REDIS_URL) return null;
-  const client = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times) => {
-      if (times > 3) return null; // stop retrying after 3 attempts
-      return Math.min(times * 200, 2000);
-    },
-    lazyConnect: true,
-    enableOfflineQueue: false,
-  });
-
-  client.on("error", (err) => {
-    console.warn("[Redis] Connection error:", err.message);
-  });
-
-  return client;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  return new Redis({ url, token });
 }
 
 const redis = globalForRedis.redis ?? createRedis();

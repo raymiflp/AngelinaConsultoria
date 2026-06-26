@@ -134,3 +134,42 @@ The context factory SHALL import and call the `auth` helper from the Auth.js con
 - GIVEN the Auth.js module at `src/auth.ts` exports an `auth` function
 - WHEN the `createContext` factory is invoked
 - THEN it MUST call `auth()` and assign the result to `ctx.session`
+
+## Upstash REST Additions (2026-06-25)
+
+The following requirements are ADDED to this spec by the `migrate-managed-services` change (archived 2026-06-25). They replace the ioredis-TCP contract with the Upstash REST contract and codify the graceful-degrade behavior.
+
+### Requirement: REQ-API-UPSTASH-1 — Rate limiter degrades gracefully when Upstash env vars are unset
+
+The `rateLimitedPublicProcedure` middleware MUST degrade to a no-op when `UPSTASH_REDIS_REST_URL` or `UPSTASH_REDIS_REST_TOKEN` is unset. The graceful-degrade contract:
+- If env vars unset → return `{ allowed: true }` without an Upstash API call.
+- If env vars set but the API call fails → log the error and return `{ allowed: true }` (fail-open).
+
+#### Scenario: Rate limiter no-ops when Upstash unset
+
+- GIVEN `UPSTASH_REDIS_REST_URL` is unset
+- WHEN a rate-limited tRPC procedure is invoked
+- THEN `rateLimit(...)` MUST return `{ allowed: true }` without an Upstash API call
+- AND the procedure MUST proceed as if the rate limit passed
+
+### Requirement: REQ-API-UPSTASH-2 — Cache degrades gracefully when Upstash env vars are unset
+
+The `cacheGetOrSet` and `cacheInvalidate` functions MUST degrade gracefully when Upstash env vars are unset.
+
+#### Scenario: cacheGetOrSet bypasses cache when Upstash unset
+
+- GIVEN `UPSTASH_REDIS_REST_URL` is unset
+- WHEN `cacheGetOrSet(key, fetcher)` is called
+- THEN it MUST call `fetcher()` directly
+- AND it MUST NOT make an Upstash API call
+
+### Requirement: REQ-API-UPSTASH-3 — Cache uses explicit key list for invalidation
+
+The `cacheInvalidate` function MUST NOT use `KEYS` or `SCAN` + `DEL` patterns. It MUST use an explicit key list (via a per-namespace index key).
+
+#### Scenario: cacheInvalidate does not use KEYS pattern matching
+
+- GIVEN `cacheInvalidate(...)` is called
+- WHEN the implementation is read
+- THEN it MUST NOT call any `KEYS` or `SCAN` API
+- AND it MUST use an explicit key list

@@ -127,3 +127,30 @@ The authorize callback MUST return generic error messages that do not reveal whe
 - GIVEN either an unknown email or incorrect password
 - WHEN `authorize` returns `null`
 - THEN the caller MUST receive only "Credenciales inválidas" without distinguishing the failure reason
+
+## Vercel Deployment Additions (2026-06-25)
+
+The following requirements are ADDED to this spec by the `migrate-managed-services` change (archived 2026-06-25). They cover the Auth.js v5 hard requirements for running on Vercel's edge proxy.
+
+### Requirement: REQ-AUTH-V-1 — AUTH_TRUST_HOST is set on Vercel
+
+The Auth.js v5 configuration MUST set `trustHost: true` (or accept `AUTH_TRUST_HOST=true` as an env var) when deployed to Vercel. Vercel terminates TLS at the edge and proxies to the Function with an internal HTTP origin, so NextAuth cannot auto-detect the canonical URL without this flag.
+
+`.env.example` MUST include `AUTH_TRUST_HOST=true` as a placeholder line. `docs/deployment.md` MUST document this as a required env var.
+
+#### Scenario: AUTH_TRUST_HOST is in .env.example
+
+- GIVEN `.env.example` after the migration
+- WHEN the file is read
+- THEN `AUTH_TRUST_HOST` MUST appear with `=` and a placeholder value
+
+### Requirement: REQ-AUTH-V-2 — AUTH_URL resolves from VERCEL_URL
+
+The `AUTH_URL` env var SHOULD be set to the value of `VERCEL_URL` on Vercel deployments. The Auth.js configuration MUST NOT hardcode a single `AUTH_URL` — it MUST read from env at boot.
+
+#### Scenario: AUTH_URL uses VERCEL_URL on Vercel
+
+- GIVEN a Vercel production deployment
+- WHEN `AUTH_URL` is read by NextAuth
+- THEN it MUST equal `https://${VERCEL_URL}` (the Vercel-injected domain)
+- AND it MUST NOT be hardcoded to a fixed value

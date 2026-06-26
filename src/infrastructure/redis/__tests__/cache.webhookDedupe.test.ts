@@ -7,9 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  *   2. Second call returns `{ isNew: false }` (redis.set returns null).
  *   3. Key shape is `livekit:webhook:<eventId>` (the namespace matches
  *      the existing `slots:` pattern in cache.ts).
- *   4. TTL of 86400 is passed via "EX" by default.
- *   5. Degrade-open on Redis throw returns `{ isNew: true }` (NOT
+ *   4. TTL of 86400 is passed via `ex` option by default.
+ *   5. Degrade-open on Upstash throw returns `{ isNew: true }` (NOT
  *      `{ isNew: false }` — AD-5).
+ *
+ * ADR-0001: the underlying client migrated from `ioredis` to
+ * `@upstash/redis` REST. The mock shape follows the Upstash REST SDK
+ * (`redis.set(key, value, { nx: true, ex: ttl })`).
  *
  * The redis singleton is mocked via vi.mock on the module that exports it.
  * We use `vi.hoisted` so the spy is available inside the vi.mock factory
@@ -22,7 +26,8 @@ const { mockRedis } = vi.hoisted(() => {
     set: vi.fn(),
     get: vi.fn(),
     del: vi.fn(),
-    keys: vi.fn(),
+    rpush: vi.fn(),
+    expire: vi.fn(),
   };
   return { mockRedis };
 });
@@ -38,7 +43,8 @@ beforeEach(() => {
   mockRedis.set.mockReset();
   mockRedis.get.mockReset();
   mockRedis.del.mockReset();
-  mockRedis.keys.mockReset();
+  mockRedis.rpush.mockReset();
+  mockRedis.expire.mockReset();
 });
 
 describe("webhookDedupe", () => {
@@ -51,7 +57,7 @@ describe("webhookDedupe", () => {
   });
 
   it("second call returns { isNew: false } when the key already exists", async () => {
-    // ioredis SET ... NX returns null when the key already exists.
+    // Upstash REST SET ... NX returns null when the key already exists.
     mockRedis.set.mockResolvedValueOnce(null);
 
     const result = await webhookDedupe("evt-aaaa-bbbb");
@@ -71,22 +77,20 @@ describe("webhookDedupe", () => {
     );
   });
 
-  it("passes TTL of 86400 (24h) by default via 'EX' option", async () => {
+  it("passes TTL of 86400 (24h) by default via 'ex' option", async () => {
     mockRedis.set.mockResolvedValueOnce("OK");
 
     await webhookDedupe("evt-aaaa-bbbb");
 
     const callArgs = mockRedis.set.mock.calls[0]!;
-    // ioredis signature: set(key, value, "EX", seconds, "NX")
+    // Upstash signature: set(key, value, { nx: true, ex: ttl })
     expect(callArgs[1]).toBe("1"); // value marker
-    expect(callArgs[2]).toBe("EX");
-    expect(callArgs[3]).toBe(86400);
-    expect(callArgs[4]).toBe("NX");
+    expect(callArgs[2]).toEqual({ nx: true, ex: 86400 });
   });
 
-  it("degrade-open on Redis throw returns { isNew: true } (NOT { isNew: false })", async () => {
+  it("degrade-open on Upstash throw returns { isNew: true } (NOT { isNew: false })", async () => {
     // AD-5: a degrade-CLOSED behavior would silently drop legitimate
-    // events when Redis is down, which is worse than a replay that
+    // events when Upstash is down, which is worse than a replay that
     // re-runs the use case (which is itself idempotent).
     mockRedis.set.mockRejectedValueOnce(new Error("connection refused"));
 

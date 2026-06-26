@@ -1,8 +1,15 @@
 # =============================================================================
-# docker-compose.yml — angelina-consultoria (entorno de desarrollo completo)
+# docker-compose.yml — angelina-consultoria (local dev only)
 # =============================================================================
-# Uso: docker compose up -d
-# Servicios: PostgreSQL, Redis, MinIO, Meilisearch, LiveKit
+# ADR-0001 (Vercel-Only): this file is for LOCAL DEV ONLY. Production deploys
+# to Vercel + managed services (Vercel Postgres, Upstash REST, LiveKit Cloud,
+# Vercel Blob). No service in this file is deployed to production.
+#
+# Local dev mirrors the prod stack where possible:
+#   - Postgres (Docker)         ↔ Vercel Postgres (in prod)
+#   - Redis (Docker)            ↔ Upstash REST (in prod)
+#   - LiveKit Cloud dev project ↔ LiveKit Cloud prod project (same service)
+#   - Object storage: NOT NEEDED in local dev (no current source uses it)
 
 services:
   postgres:
@@ -38,63 +45,6 @@ services:
       timeout: 3s
       retries: 5
 
-  minio:
-    image: minio/minio:latest
-    container_name: angelina-minio
-    restart: unless-stopped
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: angelina_access
-      MINIO_ROOT_PASSWORD: angelina_secret
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  meilisearch:
-    image: getmeili/meilisearch:v1.13
-    container_name: angelina-meilisearch
-    restart: unless-stopped
-    ports:
-      - "7700:7700"
-    environment:
-      MEILI_MASTER_KEY: dev-master-key
-      MEILI_ENV: development
-    volumes:
-      - meilisearch_data:/meili_data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  livekit:
-    image: livekit/livekit-server:latest
-    container_name: angelina-livekit
-    restart: unless-stopped
-    ports:
-      - "7880:7880"   # HTTP signaling
-      - "7881:7881"   # WebRTC over TCP
-      - "7882:7882/udp"  # WebRTC over UDP
-    volumes:
-      - ./docker/dev/livekit.yaml:/etc/livekit.yaml:ro  # webhook config (livekit-webhooks, D11, AD-13)
-    extra_hosts:  # host.docker.internal cross-platform: Mac/Windows Docker Desktop resolves natively; Linux requires this mapping (livekit-webhooks, D11, R8, AD-14)
-      - "host.docker.internal:host-gateway"
-    command: --dev --bind 0.0.0.0 --config /etc/livekit.yaml
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:7880/"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
-  meilisearch_data:

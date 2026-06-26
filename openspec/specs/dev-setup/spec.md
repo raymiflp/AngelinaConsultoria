@@ -126,3 +126,33 @@ Each row MUST use the exact error message or HTTP response the operator would se
 - WHEN they `grep` the runbook for the error message
 - THEN the row matching that error MUST exist in the matrix
 - AND the error message text in the matrix MUST be a substring of the actual application output (e.g. `"LiveKit env vars missing"` is byte-identical to the boot-time error in `livekit-infrastructure/spec.md`)
+
+## Vercel-Only Migration (2026-06-25)
+
+The following requirements are ADDED to this spec by the `migrate-managed-services` change (archived 2026-06-25). They reflect the dev-stack simplification after ADR-0001: only Postgres + Redis run locally now (LiveKit is Cloud, MinIO is Vercel Blob, MeiliSearch is dropped). REQ-DEV-SETUP-2 and REQ-DEV-SETUP-3 above are MODIFIED to match.
+
+### Requirement: REQ-DEV-SETUP-6: Runbook cross-links ADR-0001
+
+The runbook MUST cross-link ADR-0001 (`docs/architecture/decisions/0001-vercel-only.md`) in a short "Why this stack" note at the top of the runbook. The note MUST state that the dev stack mirrors the production stack (Vercel-only, LiveKit Cloud, Upstash REST) and link to the ADR for the rationale.
+
+#### Scenario: Runbook has a "Why this stack" note
+
+- GIVEN `docs/dev-setup.md`
+- WHEN the file's opening is read
+- THEN a section MUST cross-link ADR-0001
+- AND the section MUST mention "Vercel-only" or equivalent framing
+
+### Requirement: REQ-DEV-SETUP-2 (post-migration): Runbook documents only Postgres + Redis
+
+(Previously: 5 Docker services required — postgres, redis, minio, meilisearch, livekit. Now: 2 Docker services required — postgres, redis.)
+
+The runbook MUST list exactly 2 services in the "DB services" section: `postgres` and `redis`. The `minio`, `meilisearch`, and `livekit` services MUST NOT appear.
+
+The env-var list MUST include `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NEXT_PUBLIC_LIVEKIT_URL` (with a `wss://` value), and `LIVEKIT_WEBHOOK_URL`. The list MUST NOT include `REDIS_URL`, `MINIO_*`, or `MEILI_*`.
+
+#### Scenario: Runbook lists only postgres + redis
+
+- GIVEN the runbook's "DB services" section
+- WHEN the section is read
+- THEN exactly 2 services MUST be listed: `postgres` and `redis`
+- AND `minio`, `meilisearch`, `livekit` MUST NOT appear

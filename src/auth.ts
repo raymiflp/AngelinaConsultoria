@@ -6,6 +6,11 @@ import { eq } from "drizzle-orm";
 import { verify } from "@/infrastructure/auth/password";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // ADR-0001: Vercel terminates TLS at the edge and proxies to the Function
+  // with an internal HTTP origin. NextAuth v5 cannot auto-detect the
+  // canonical URL without this flag — without it, "UntrustedHost" errors
+  // fire on every auth route.
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
